@@ -42,7 +42,7 @@ Before using ChordSeek, ensure you have Docker installed and that your user is a
 - https://docs.docker.com/engine/install/
 
 As for the installation of the CLI tool you must install the required libraries through requirements.txt,
-preferably in a virtual environment(e.g. using venv) as can be seen below:
+preferably in a virtual environment (e.g. using venv) as can be seen below:
 ```bash
 # Navigate to project's root folder
 cd ChordSeek
@@ -71,8 +71,8 @@ For the purpose of designing and implementing our peer-to-peer chord network we 
 
 ### Initialization
 
-The initialization of the chord network is carried out by a single node(not part of the Chord) and is responsible for each of the following:
-- Initialization of each Finger Table(FT) in a randomized way as far as node selection is concerned. 
+The initialization of the chord network is carried out by a single node (not part of the Chord) and is responsible for each of the following:
+- Initialization of each Finger Table (FT) in a randomized way as far as node selection is concerned. 
 - Fetching Wikipedia's data using the implemented Web Crawler.
 - Distributing the data across the Chord network properly (according to each node's id).
 
@@ -83,13 +83,13 @@ Concerning the implementation of the communication between the nodes, we've foll
 ### Storage
 
 As far as storage is concerned, each node maintains a SQLite3 database for data persistency.
+<h3 style="text-align: center;">A Typical Representation of Chord Network Total Architecture</h3>
 <p align="center">
-<h3> A Typical Representation of Chord Network Total Architecture</h3>
  <img src="./images_media/chord_arch.png" alt="Architecture of Chord Network" style="width:100%">
     <br>
     <em><i>Figure 1</i></em>
 </p>
-<br>
+
 
 # Methodology and Results
 
@@ -97,15 +97,15 @@ As mentioned earlier, Chord is a distributed hash table (DHT) protocol specifica
 
 ## Key components
 
-1. ***Ring Structure***: Chord adopts a ring structure to organize participating nodes, assigning each node a unique identifier(from a fixed identifier space | experimented with **2048** unique values space) based on its hash. This ring structure facilitates efficient key lookup and distribution across the network.
-2. ***Finger Tables(FT)***: Each node in the Chord network maintains a finger table, providing information about other nodes. This table is crucial for making quick routing decisions, enabling efficient key discovery by minimizing the number of hops required.
+1. ***Ring Structure***: Chord adopts a ring structure to organize participating nodes, assigning each node a unique identifier (from a fixed identifier space | experimented with **2048** unique values space) based on its hash. This ring structure facilitates efficient key lookup and distribution across the network.
+2. ***Finger Tables (FT)***: Each node in the Chord network maintains a finger table, providing information about other nodes. This table is crucial for making quick routing decisions, enabling efficient key discovery by minimizing the number of hops required.
 3. ***Key Hashing***: Consistent hashing is employed by Chord in order to map keys and nodes in the network. In our implementation, we used the **SHA-1** hash function according to the paper. 
 
 ## Methodology
 
-1. ***Node joining***: When a new node joins the Chord network, it initiates contact with an existing node(arbitrary node) to initialize its finger table. This involves updating relevant entries in the finger table to reflect the new node's presence in the network.
+1. ***Node joining***: When a new node joins the Chord network, it initiates contact with an existing node (arbitrary node) to initialize its finger table. This involves updating relevant entries in the finger table to reflect the new node's presence in the network.
 2. ***Node departure***: When a node leaves, its keys and responsibilities are transferred to its successor, ensuring data continuity. The finger tables of related nodes are updated to reflect the changes, ensuring a seamless transition in the network.
-3. ***Key lookup***: In the context of key discovery within the network, a node forwards the request to the node whose identifier is closest to the target key. This iterative process persists until the responsible node is located, thereby minimizing the number of hops(Goal -> ***O(logN)***) required for key retrieval. 
+3. ***Key lookup***: In the context of key discovery within the network, a node forwards the request to the node whose identifier is closest to the target key. This iterative process persists until the responsible node is located, thereby minimizing the number of hops (Goal -> ***O(logN)***) required for key retrieval. 
 
 
 ## Chord Protocol Implementation and Functionality
@@ -114,17 +114,17 @@ As already mentioned, the implementation of Project's Chord protocol was based o
 
 1. **find_successor(key_id)**:  Finds the successor node for a given key_id using the Chord protocol algorithm.
 2. **find_predecessor(key_id)**:  Finds the predecessor node for the given key_id using the Chord protocol algorithm.
-3. **closest_preceding_finger(key_id)**: Locates the closest preceding finger in the finger table of the current node relative to the specified(given) key_id. 
+3. **closest_preceding_finger(key_id)**: Locates the closest preceding finger in the finger table of the current node relative to the specified (given) key_id. 
 4. **init_finger_table(arbitrary_node)**: Calculates the values of the fields in the finger table of the current node by making gRPC calls to other nodes in the Chord network.
 5. **join(arbitrary_node)**:  Orchestrates the process of integrating a node into the Chord ring network. Upon execution, the newly introduced node undergoes the calculation of its finger table. If the new node is not the first to join the network, the update_others function is invoked to perform necessary updates to the finger tables of nodes affected by the new node's entry. It's important to note that this entire process begins with the help of an arbitrary node. The arbitrary node is selected via a randomized election scheme from the existing nodes in the network.
 6. **update_others()**: Initiates the process of updating the finger tables of other nodes in the Chord network affected by the new node's entry.
-7. **update_finger_table(requested_node, index)**: Handles the update of an entry(specified by the index parameter) in the finger table of a node based on a gRPC request coming from another node. After receiving the request, the method checks conditions related to the key values and updates the corresponding entry in the finger table. This process is executed recursively to ensure the consistency of the finger tables across the Chord network.
+7. **update_finger_table(requested_node, index)**: Handles the update of an entry (specified by the index parameter) in the finger table of a node based on a gRPC request coming from another node. After receiving the request, the method checks conditions related to the key values and updates the corresponding entry in the finger table. This process is executed recursively to ensure the consistency of the finger tables across the Chord network.
 
 In our implementation, in addition to the join function, we have also developed the ***leave*** function. This function, along with ***fix_others()*** and ***fix_finger_table(departing_node, index)***, ensures the proper update of finger tables and consistency in the network when a node leaves. <br>
 In a nutshell:
 1. **leave()**: Manages the departure process of a node from the Chord ring network. If the departing node is the only node in the network, it removes itself and clears its data. Alternatively -meaning that there are at least two running nodes in the network- it clears its own data, it updates the successor and predecessor of related nodes, it transfers its data to its successor and finally updates the corresponding nodes' finger table.
 2. **fix_others()**: Initiates the process of fixing the finger tables of other nodes in the Chord network affected by the departure of the current node. This method iterates through the finger table entries of the current node and makes gRPC calls to the appropriate predecessor nodes in order to cause an update to their finger tables. The goal is to propagate the notification of the node's departure throughout the network, influencing all related nodes. In this way, consistency of the information of all associated finger tables is ensured.
-3. **fix_finger_table(departing_node, index)**: Fix the finger table entry(specified by the index) of the corresponding node based on a initial gRPC request from the departing node. It is called recursively to ensure the consistency of the finger tables across the Chord network. It evaluates the appropriate conditions to determine if an update is necessary and makes appropriate updates to the finger table entry. This process is executed recursively to again ensure the consistency of the finger tables across the Chord network.
+3. **fix_finger_table(departing_node, index)**: Fix the finger table entry (specified by the index) of the corresponding node based on a initial gRPC request from the departing node. It is called recursively to ensure the consistency of the finger tables across the Chord network. It evaluates the appropriate conditions to determine if an update is necessary and makes appropriate updates to the finger table entry. This process is executed recursively to again ensure the consistency of the finger tables across the Chord network.
 
 
 ## Experimental Results
@@ -173,7 +173,7 @@ Experience the ***ChordSeek*** CLI tool in action through a step-by-step walkthr
 ## Chord Network Demonstration
 
 ### Create the Chord Network
-Start by setting up the Chord network with a total of 32(adjustable based on your computational power) containers. This initial step establishes the foundation for distributed key management.
+Start by setting up the Chord network with a total of 32 (adjustable based on your computational power) containers. This initial step establishes the foundation for distributed key management.
 
 ![](./images_media/create_network.gif)
 We observe that the creation of nodes-containers was successful. The return table informs us about the hash value each container received.
@@ -194,8 +194,8 @@ From the returned table  after the network creation, we can see that this node i
 
 
 
-### Find the Finger Table(FT) of a node
-Suppose we want to find the **Finger Table(FT)** of the node with the IP address ***"10.0.0.33"***.
+### Find the Finger Table (FT) of a node
+Suppose we want to find the **Finger Table (FT)** of the node with the IP address ***"10.0.0.33"***.
 
 ![](./images_media/find_FT.gif)
 
@@ -211,7 +211,7 @@ We will now showcase the two following range queries:
 Showcasing a node joining the network:
 
 ![](./images_media/join.gif)
-The new node(with the IP address ***"10.0.0.34"***) is successfully integrated into the network. Its finger table is initialized correctly. Additionaly, it is set as the successor for the node with IP address 10.0.0.12 and as the predecessor for the node with IP address 10.0.0.20.
+The new node (with the IP address ***"10.0.0.34"***) is successfully integrated into the network. Its finger table is initialized correctly. Additionaly, it is set as the successor for the node with IP address 10.0.0.12 and as the predecessor for the node with IP address 10.0.0.20.
 
 
 ### Node Leave
